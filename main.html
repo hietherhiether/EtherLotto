@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>분산화된 블록체인 복권</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(90deg, #4c1d95 0%, #7c3aed 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <header class="gradient-bg text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">분산화된 블록체인 복권</h1>
+            <div>
+                <button id="connectWallet" class="bg-white text-purple-800 px-4 py-2 rounded-md font-medium">지갑 연결</button>
+                <p id="userAddress" class="text-sm mt-1 text-purple-200 hidden"></p>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">현재 복권 정보</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-purple-50 p-4 rounded-md">
+                    <p class="text-sm text-purple-500">현재 회차</p>
+                    <p id="currentLotteryId" class="text-2xl font-bold">-</p>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-md">
+                    <p class="text-sm text-purple-500">티켓 가격</p>
+                    <p id="ticketPrice" class="text-2xl font-bold">-</p>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-md">
+                    <p class="text-sm text-purple-500">판매된 티켓 / 최대 티켓</p>
+                    <p id="ticketsSold" class="text-2xl font-bold">-</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">티켓 구매</h2>
+            <div class="flex flex-col md:flex-row md:items-end gap-4">
+                <div class="flex-1">
+                    <label for="ticketCount" class="block text-sm font-medium text-gray-700 mb-1">구매할 티켓 수</label>
+                    <input type="number" id="ticketCount" min="1" value="1" class="w-full p-2 border border-gray-300 rounded-md">
+                </div>
+                <div class="flex-1">
+                    <p class="block text-sm font-medium text-gray-700 mb-1">총 가격</p>
+                    <p id="totalPrice" class="text-lg font-bold">-</p>
+                </div>
+                <div class="flex-1">
+                    <button id="buyTickets" class="w-full bg-purple-600 text-white px-4 py-2 rounded-md font-medium hover:bg-purple-700 transition">티켓 구매하기</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="adminPanel" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
+            <h2 class="text-xl font-bold mb-4">관리자 기능</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p class="text-sm font-medium text-gray-700 mb-2">복권 상태</p>
+                    <p id="lotteryState" class="text-lg font-bold mb-4">-</p>
+                    <div class="space-y-2">
+                        <button id="drawWinner" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md font-medium hover:bg-indigo-700 transition">당첨자 추첨 시작</button>
+                        <button id="revealWinner" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md font-medium hover:bg-indigo-700 transition">당첨자 공개</button>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-700 mb-2">설정 변경</p>
+                    <div class="space-y-2">
+                        <div>
+                            <label for="newTicketPrice" class="block text-xs text-gray-500">새 티켓 가격 (ETH)</label>
+                            <div class="flex gap-2">
+                                <input type="number" id="newTicketPrice" step="0.001" class="flex-1 p-2 border border-gray-300 rounded-md">
+                                <button id="setTicketPrice" class="bg-gray-200 px-2 py-1 rounded-md text-sm">변경</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="newMaxTickets" class="block text-xs text-gray-500">최대 티켓 수</label>
+                            <div class="flex gap-2">
+                                <input type="number" id="newMaxTickets" min="1" class="flex-1 p-2 border border-gray-300 rounded-md">
+                                <button id="setMaxTickets" class="bg-gray-200 px-2 py-1 rounded-md text-sm">변경</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="newFeePercentage" class="block text-xs text-gray-500">수수료 퍼센트 (%)</label>
+                            <div class="flex gap-2">
+                                <input type="number" id="newFeePercentage" min="1" max="20" class="flex-1 p-2 border border-gray-300 rounded-md">
+                                <button id="setFeePercentage" class="bg-gray-200 px-2 py-1 rounded-md text-sm">변경</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-bold mb-4">이전 복권 결과</h2>
+            <div id="previousResults" class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">회차</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">총 티켓 수</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">당첨자</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상금</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- 이전 결과가 여기에 동적으로 추가됩니다 -->
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-gray-500">이전 결과 로딩 중...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer class="gradient-bg text-white p-4 mt-8">
+        <div class="container mx-auto text-center">
+            <p>© 2025 분산화된 블록체인 복권 시스템</p>
+            <p class="text-sm mt-1">이더리움 스마트 컨트랙트로 구현된 분산화된 복권 시스템입니다.</p>
+        </div>
+    </footer>
+
+    <div id="transactionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 id="modalTitle" class="text-xl font-bold mb-4">트랜잭션 처리 중</h3>
+            <p id="modalMessage" class="mb-4">트랜잭션이 처리되고 있습니다. 잠시만 기다려주세요...</p>
+            <div id="modalSpinner" class="flex justify-center mb-4">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-700"></div>
+            </div>
+            <div id="modalActions" class="flex justify-end">
+                <button id="modalClose" class="bg-gray-200 px-4 py-2 rounded-md">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <script>
+        // 스마트 컨트랙트 ABI
+        const contractABI = [
+            "function ticketPrice() view returns (uint256)",
+            "function maxTickets() view returns (uint256)",
+            "function ticketsSold() view returns (uint256)",
+            "function currentLotteryId() view returns (uint256)",
+            "function lotteryState() view returns (uint8)",
+            "function feePercentage() view returns (uint256)",
+            "function OWNER() view returns (address)",
+            "function buyTickets(uint256 _ticketCount) payable",
+            "function drawWinner()",
+            "function revealWinner()",
+            "function setTicketPrice(uint256 _newPrice)",
+            "function setMaxTickets(uint256 _maxTickets)",
+            "function setFeePercentage(uint256 _feePercentage)",
+            "function getLotteryInfo(uint256 _lotteryId) view returns (uint256 totalTickets, uint256 prizeAmount, address winner, bool isComplete)",
+            "function getUserTickets(address _user) view returns (uint256)",
+            "function getCurrentLotteryState() view returns (uint256 lotteryId, uint256 sold, uint256 max, uint256 price, uint8 state)"
+        ];
+
+        // 스마트 컨트랙트 주소 - 배포 후 이 값을 변경해야 합니다
+        const contractAddress = "CONTRACT_ADDRESS_PLACEHOLDER";
+        
+        // 전역 변수
+        let provider;
+        let signer;
+        let contract;
+        let userAddress;
+        let isOwner = false;
+        const OWNER_ADDRESS = "0x5aff206Cb7FBb3BAb6F3D7538131D475FF2b1b5b";
+
+        // 상태 이름 매핑
+        const stateNames = ["열림", "마감됨", "당첨자 추첨 중"];
+
+        // 초기화 함수
+        async function init() {
+            // DOM 요소 이벤트 연결
+            document.getElementById('connectWallet').addEventListener('click', connectWallet);
+            document.getElementById('buyTickets').addEventListener('click', buyTickets);
+            document.getElementById('drawWinner').addEventListener('click', drawWinner);
+            document.getElementById('revealWinner').addEventListener('click', revealWinner);
+            document.getElementById('setTicketPrice').addEventListener('click', setTicketPrice);
+            document.getElementById('setMaxTickets').addEventListener('click', setMaxTickets);
+            document.getElementById('setFeePercentage').addEventListener('click', setFeePercentage);
+            document.getElementById('modalClose').addEventListener('click', closeModal);
+            
+            // 티켓 카운트 변경 이벤트
+            document.getElementById('ticketCount').addEventListener('input', updateTotalPrice);
+            
+            // 이더리움 제공자 확인
+            if (window.ethereum) {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                
+                // 이미 연결된 계정이 있는지 확인
+                try {
+                    const accounts = await provider.listAccounts();
+                    if (accounts.length > 0) {
+                        await connectWallet();
+                    }
+                } catch (error) {
+                    console.error("계정 목록 조회 중 오류:", error);
+                }
+            } else {
+                alert("메타마스크나 다른 이더리움 지갑이 필요합니다!");
+            }
+        }
+
+        // 지갑 연결 함수
+        async function connectWallet() {
+            try {
+                await provider.send("eth_requestAccounts", []);
+                signer = provider.getSigner();
+                userAddress = await signer.getAddress();
+                
+                // 계약 인스턴스 생성
+                contract = new ethers.Contract(contractAddress, contractABI, signer);
+                
+                // UI 업데이트
+                document.getElementById('userAddress').textContent = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+                document.getElementById('userAddress').classList.remove('hidden');
+                document.getElementById('connectWallet').textContent = "연결됨";
+                
+                // 관리자 확인
+                isOwner = (userAddress.toLowerCase() === OWNER_ADDRESS.toLowerCase());
+                if (isOwner) {
+                    document.getElementById('adminPanel').classList.remove('hidden');
+                }
+                
+                // 정보 업데이트
+                await updateLotteryInfo();
+                await loadPreviousResults();
+                
+                // 이벤트 리스너
+                contract.on("TicketPurchased", (buyer, lotteryId, ticketCount, event) => {
+                    if (buyer.toLowerCase() === userAddress.toLowerCase()) {
+                        updateLotteryInfo();
+                    }
+                });
+                
+                contract.on("WinnerSelected", (lotteryId, winner, prize, event) => {
+                    updateLotteryInfo();
+                    loadPreviousResults();
+                });
+                
+                contract.on("NewLotteryStarted", (lotteryId, ticketPrice, maxTickets, event) => {
+                    updateLotteryInfo();
+                });
+                
+            } catch (error) {
+                console.error("지갑 연결 오류:", error);
+                alert("지갑 연결에 실패했습니다.");
+            }
+        }
+
+        // 복권 정보 업데이트
+        async function updateLotteryInfo() {
+            try {
+                const lotteryInfo = await contract.getCurrentLotteryState();
+                const ticketPrice = ethers.utils.formatEther(lotteryInfo.price);
+                
+                document.getElementById('currentLotteryId').textContent = lotteryInfo.lotteryId.toString();
+                document.getElementById('ticketPrice').textContent = `${ticketPrice} ETH`;
+                document.getElementById('ticketsSold').textContent = `${lotteryInfo.sold} / ${lotteryInfo.max}`;
+                
+                if (isOwner) {
+                    document.getElementById('lotteryState').textContent = stateNames[lotteryInfo.state];
+                    
+                    // 관리자 버튼 활성화/비활성화
+                    const drawBtn = document.getElementById('drawWinner');
+                    const revealBtn = document.getElementById('revealWinner');
+                    
+                    if (lotteryInfo.state == 0 && lotteryInfo.sold > 0) { // OPEN & tickets sold
+                        drawBtn.disabled = false;
+                        drawBtn.classList.remove('bg-gray-400');
+                        drawBtn.classList.add('bg-indigo-600');
+                    } else {
+                        drawBtn.disabled = true;
+                        drawBtn.classList.remove('bg-indigo-600');
+                        drawBtn.classList.add('bg-gray-400');
+                    }
+                    
+                    if (lotteryInfo.state == 1) { // CLOSED
+                        revealBtn.disabled = false;
+                        revealBtn.classList.remove('bg-gray-400');
+                        revealBtn.classList.add('bg-indigo-600');
+                    } else {
+                        revealBtn.disabled = true;
+                        revealBtn.classList.remove('bg-indigo-600');
+                        revealBtn.classList.add('bg-gray-400');
+                    }
+                }
+                
+                // 총 가격 업데이트
+                updateTotalPrice();
+                
+            } catch (error) {
+                console.error("복권 정보 업데이트 오류:", error);
+            }
+        }
+
+        // 총 가격 업데이트
+        async function updateTotalPrice() {
+            try {
+                const ticketCount = parseInt(document.getElementById('ticketCount').value) || 0;
+                const ticketPriceWei = await contract.ticketPrice();
+                const totalPriceWei = ticketPriceWei.mul(ticketCount);
+                const totalPrice = ethers.utils.formatEther(totalPriceWei);
+                
+                document.getElementById('totalPrice').textContent = `${totalPrice} ETH`;
+            } catch (error) {
+                console.error("총 가격 업데이트 오류:", error);
+            }
+        }
+
+        // 이전 결과 로드
+        async function loadPreviousResults() {
+            try {
+                const currentId = await contract.currentLotteryId();
+                const resultsTableBody = document.getElementById('resultsTableBody');
+                resultsTableBody.innerHTML = '';
+                
+                // 최대 10개 이전 회차 표시
+                const startId = Math.max(1, currentId.toNumber() - 10);
+                
+                for (let i = currentId.toNumber() - 1; i >= startId; i--) {
+                    const info = await contract.getLotteryInfo(i);
+                    
+                    if (info.isComplete) {
+                        const row = document.createElement('tr');
+                        
+                        // 회차
+                        const idCell = document.createElement('td');
+                        idCell.className = 'px-6 py-4 whitespace-nowrap';
+                        idCell.textContent = i;
+                        row.appendChild(idCell);
+                        
+                        // 총 티켓 수
+                        const ticketsCell = document.createElement('td');
+                        ticketsCell.className = 'px-6 py-4 whitespace-nowrap';
+                        ticketsCell.textContent = info.totalTickets.toString();
+                        row.appendChild(ticketsCell);
+                        
+                        // 당첨자
+                        const winnerCell = document.createElement('td');
+                        winnerCell.className = 'px-6 py-4 whitespace-nowrap';
+                        winnerCell.textContent = `${info.winner.slice(0, 6)}...${info.winner.slice(-4)}`;
+                        row.appendChild(winnerCell);
+                        
+                        // 상금
+                        const prizeCell = document.createElement('td');
+                        prizeCell.className = 'px-6 py-4 whitespace-nowrap';
+                        prizeCell.textContent = `${ethers.utils.formatEther(info.prizeAmount)} ETH`;
+                        row.appendChild(prizeCell);
+                        
+                        resultsTableBody.appendChild(row);
+                    }
+                }
+                
+                if (resultsTableBody.children.length === 0) {
+                    const emptyRow = document.createElement('tr');
+                    const emptyCell = document.createElement('td');
+                    emptyCell.colSpan = 4;
+                    emptyCell.className = 'px-6 py-4 text-center text-gray-500';
+                    emptyCell.textContent = '이전 복권 결과가 없습니다.';
+                    emptyRow.appendChild(emptyCell);
+                    resultsTableBody.appendChild(emptyRow);
+                }
+                
+            } catch (error) {
+                console.error("이전 결과 로드 오류:", error);
+            }
+        }
+
+        // 티켓 구매 함수
+        async function buyTickets() {
+            try {
+                const ticketCount = parseInt(document.getElementById('ticketCount').value) || 0;
+                
+                if (ticketCount <= 0) {
+                    alert("적어도 1개 이상의 티켓을 구매해야 합니다.");
+                    return;
+                }
+                
+                const ticketPriceWei = await contract.ticketPrice();
+                const totalPriceWei = ticketPriceWei.mul(ticketCount);
+                
+                showModal("티켓 구매 중", "티켓 구매 트랜잭션이 처리되고 있습니다. 메타마스크에서 확인해주세요.");
+                
+                const tx = await contract.buyTickets(ticketCount, {
+                    value: totalPriceWei,
+                    gasLimit: 500000
+                });
+                
+                updateModalMessage("트랜잭션이 제출되었습니다. 블록체인에서 확인 중...");
+                
+                await tx.wait();
+                
+                updateModalMessage("티켓 구매 완료! 행운을 빕니다.", true);
+                await updateLotteryInfo();
+                
+            } catch (error) {
+                console.error("티켓 구매 오류:", error);
+                updateModalMessage("티켓 구매 중 오류가 발생했습니다: " + error.message, true);
+            }
+        }
+
+        // 당첨자 추첨 시작 함수
+        async function drawWinner() {
+            try {
+                showModal("당첨자 추첨 시작", "당첨자 추첨 시작 트랜잭션이 처리되고 있습니다. 메타마스크에서 확인해주세요.");
+                
+                const tx = await contract.drawWinner({
+                    gasLimit: 200000
+                });
+                
+                updateModalMessage("트랜잭션이 제출되었습니다. 블록체인에서 확인 중...");
+                
+                await tx.wait();
+                
+                updateModalMessage("당첨자 추첨이 시작되었습니다. 다음 블록에서 당첨자를 공개할 수 있습니다.", true);
+                await updateLotteryInfo();
+                
+            } catch (error) {
+                console.error("당첨자 추첨 시작 오류:", error);
+                updateModalMessage("당첨자 추첨 시작 중 오류가 발생했습니다: " + error.message, true);
+            }
+        }
+
+        // 당첨자 공개 함수
+        async function revealWinner() {
+            try {
+                showModal("당첨자 공개", "당첨자 공개 트랜잭션이 처리되고 있습니다. 메타마스크에서 확인해주세요.");
+                
+                const tx = await contract.revealWinner({
+                    gasLimit: 300000
+                });
+                
+                updateModalMessage("트랜잭션이 제출되었습니다. 블록체인에서 확인 중...");
+                
+                await tx.wait();
+                
+                updateModalMessage("당첨자가 공개되었고 상금이 전송되었습니다. 새 복권이 시작되었습니다.", true);
+                await updateLotteryInfo();
+                await loadPreviousResults();
+                
+            } catch (error) {
+                console.error("당첨자 공개 오류:", error);
+                updateModalMessage("당첨자 공개 중 오류가 발생했습니다: " + error.message, true);
+            }
+        }
+
+        // 티켓 가격 설정 함수
+        async function setTicketPrice() {
+            try {
+                const newPrice = document.getElementById('newTicketPrice').value;
+                
+                if (!newPrice || parseFloat(newPrice) <= 0) {
+                    alert("유효한 티켓 가격을 입력하세요.");
+                    return;
+                }
+                
+                const newPriceWei = ethers.utils.parseEther(newPrice);
+                
+                showModal("티켓 가격 변경", "티켓 가격 변경 트랜잭션이 처리되고 있습니다. 메타마스크에서 확인해주세요.");
+                
+                const tx = await contract.setTicketPrice(newPriceWei, {
+                    gasLimit: 100000
+                });
+                
+                updateModalMessage("트랜잭션이 제출되었습니다. 블록체인에서 확인 중...");
+                
+                await tx.wait();
+                
+                updateModalMessage("티켓 가격이 변경되었습니다.", true);
+                await updateLotteryInfo();
+                
+            } catch (error) {
+                console.error("티켓 가격 설정 오류:", error);
+                updateModalMessage("티켓 가격 변경 중 오류가 발생했습니다: " + error.message, true);
+            }
+        }
+
+        // 최대 티켓 수 설정 함수
+        async function setMaxTickets() {
+            try {
+                const newMaxTickets = document.getElementById('newMaxTickets').value;
+                
+                if (!newMaxTickets || parseInt(newMaxTickets) <= 0) {
+                    alert("유효한 최대 티켓 수를 입력하세요.");
+                    return;
+                }
+                
+                showModal("최대 티켓 수 변경", "최대 티켓 수 변경 트랜잭션이 처리되고 있습니다. 메타마스크에서 확인해주세요.");
+                
+                const tx = await contract.setMaxTickets(newMaxTickets, {
+                    gasLimit: 100000
+                });
+                
+                updateModalMessage("트랜잭션이 제출되었습니다. 블록체인에서 확인 중...");
+                
+                await tx.wait();
+                
+                updateModalMessage("최대 티켓 수가 변경되었습니다.", true);
+                await updateLotteryInfo();
+                
+            } catch (error) {
+                console.error("최대 티켓 수 설정 오류:", error);
+                updateModalMessage("최대 티켓 수 변경 중 오류가 발생했습니다: " + error.message, true);
+            }
+        }
+
+        // 수수료 퍼센트 설정 함수
+        async function setFeePercentage() {
+            try {
+                const newFeePercentage = document.getElementById('newFeePercentage').value;
+                
+                if (!newFeePercentage || parseInt(newFeePercentage) <= 0 || parseInt(newFeePercentage) > 20) {
+                    alert("유효한 수수료 퍼센트를 입력하세요 (1-20%).");
+                    return;
+                }
+                
+                showModal("수수료 퍼센트 변경", "수수료 퍼센트 변경 트랜잭션이 처리되고 있습니다. 메타마스크에서 확인해주세요.");
+                
+                const tx = await contract.setFeePercentage(newFeePercentage, {
+                    gasLimit: 100000
+                });
+                
+                updateModalMessage("트랜잭션이 제출되었습니다. 블록체인에서 확인 중...");
+                
+                await tx.wait();
+                
+                updateModalMessage("수수료 퍼센트가 변경되었습니다.", true);
+                
+            } catch (error) {
+                console.error("수수료 퍼센트 설정 오류:", error);
+                updateModalMessage("수수료 퍼센트 변경 중 오류가 발생했습니다: " + error.message, true);
+            }
+        }
+
+        // 모달 표시 함수
+        function showModal(title, message) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            document.getElementById('modalSpinner').classList.remove('hidden');
+            document.getElementById('modalClose').classList.add('hidden');
+            document.getElementById('transactionModal').classList.remove('hidden');
+        }
+
+        // 모달 메시지 업데이트 함수
+        function updateModalMessage(message, finished = false) {
+            document.getElementById('modalMessage').textContent = message;
+            
+            if (finished) {
+                document.getElementById('modalSpinner').classList.add('hidden');
+                document.getElementById('modalClose').classList.remove('hidden');
+            }
+        }
+
+        // 모달 닫기 함수
+        function closeModal() {
+            document.getElementById('transactionModal').classList.add('hidden');
+        }
+
+        // 페이지 로드 시 초기화
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

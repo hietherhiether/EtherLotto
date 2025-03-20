@@ -1,0 +1,2 @@
+# EtherLotto
+EtherLotto

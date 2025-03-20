@@ -17,6 +17,7 @@
             <h1 class="text-2xl font-bold">분산화된 블록체인 복권</h1>
             <div>
                 <button id="connectWallet" class="bg-white text-purple-800 px-4 py-2 rounded-md font-medium">지갑 연결</button>
+                <button id="disconnectWallet" class="bg-red-500 text-white px-4 py-2 rounded-md font-medium ml-2 hidden">로그아웃</button>
                 <p id="userAddress" class="text-sm mt-1 text-purple-200 hidden"></p>
             </div>
         </div>
@@ -181,6 +182,7 @@
         async function init() {
             // DOM 요소 이벤트 연결
             document.getElementById('connectWallet').addEventListener('click', connectWallet);
+            document.getElementById('disconnectWallet').addEventListener('click', disconnectWallet);
             document.getElementById('buyTickets').addEventListener('click', buyTickets);
             document.getElementById('drawWinner').addEventListener('click', drawWinner);
             document.getElementById('revealWinner').addEventListener('click', revealWinner);
@@ -223,7 +225,8 @@
                 // UI 업데이트
                 document.getElementById('userAddress').textContent = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
                 document.getElementById('userAddress').classList.remove('hidden');
-                document.getElementById('connectWallet').textContent = "연결됨";
+                document.getElementById('connectWallet').classList.add('hidden');
+                document.getElementById('disconnectWallet').classList.remove('hidden');
                 
                 // 관리자 확인
                 isOwner = (userAddress.toLowerCase() === OWNER_ADDRESS.toLowerCase());
@@ -564,6 +567,36 @@
         // 모달 닫기 함수
         function closeModal() {
             document.getElementById('transactionModal').classList.add('hidden');
+        }
+        
+        // 로그아웃 함수
+        function disconnectWallet() {
+            // 연결 상태 초기화
+            provider = null;
+            signer = null;
+            contract = null;
+            userAddress = null;
+            isOwner = false;
+            
+            // UI 초기화
+            document.getElementById('userAddress').classList.add('hidden');
+            document.getElementById('connectWallet').classList.remove('hidden');
+            document.getElementById('disconnectWallet').classList.add('hidden');
+            document.getElementById('connectWallet').textContent = "지갑 연결";
+            document.getElementById('adminPanel').classList.add('hidden');
+            
+            // 이벤트 리스너 제거 (필요한 경우)
+            if (window.ethereum && window.ethereum._events) {
+                // 이미 존재하는 이벤트 리스너 제거 로직이 필요하다면 여기에 추가
+            }
+            
+            // 복권 정보 초기화
+            document.getElementById('currentLotteryId').textContent = "-";
+            document.getElementById('ticketPrice').textContent = "-";
+            document.getElementById('ticketsSold').textContent = "-";
+            document.getElementById('totalPrice').textContent = "-";
+            
+            console.log("지갑 연결이 해제되었습니다.");
         }
 
         // 페이지 로드 시 초기화
